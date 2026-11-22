@@ -2,20 +2,16 @@ package com.saikat.hold
 
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
-import android.text.InputType
-import android.view.Gravity
-import android.widget.EditText
-import android.widget.FrameLayout
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.provider.Settings
 import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
@@ -119,17 +115,15 @@ class MainActivity : AppCompatActivity() {
     private fun setupPane(slot: String, pagerId: Int, dotsId: Int): ActionPagerAdapter {
         val pager = findViewById<ViewPager2>(pagerId)
         val dots = findViewById<LinearLayout>(dotsId)
-        val adapter = ActionPagerAdapter(
-            slot,
-            onChoose = { action ->
-                startActivity(
-                    Intent(this, PickerActivity::class.java)
-                        .putExtra(PickerActivity.EXTRA_SLOT, slot)
-                        .putExtra(PickerActivity.EXTRA_MODE, action.id)
-                )
-            },
-            onAdvanced = { showAdvancedDialog(slot) }
-        )
+        val adapter = ActionPagerAdapter(slot) { action ->
+            startActivity(
+                Intent(this, PickerActivity::class.java)
+                    .putExtra(PickerActivity.EXTRA_SLOT, slot)
+                    .putExtra(PickerActivity.EXTRA_MODE, action.id)
+            )
+        }
+        pager.orientation = ViewPager2.ORIENTATION_VERTICAL
+        keepScrollInsidePager(pager)
         pager.adapter = adapter
 
         for (i in Action.entries.indices) dots.addView(makeDot())
@@ -151,53 +145,23 @@ class MainActivity : AppCompatActivity() {
         return adapter
     }
 
-    /** Optional action / data / extras sent along with the Launch activity intent. */
-    private fun showAdvancedDialog(slot: String) {
-        val edit = EditText(this).apply {
-            setText(Slots.advanced(this@MainActivity, slot))
-            typeface = Typeface.MONOSPACE
-            textSize = 13f
-            hint = "action=com.example.ACTION"
-            minLines = 4
-            gravity = Gravity.TOP or Gravity.START
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or
-                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+    /** The page lives inside a vertically scrolling screen; stop the screen stealing the swipe. */
+    private fun keepScrollInsidePager(pager: ViewPager2) {
+        (pager.getChildAt(0) as? RecyclerView)?.setOnTouchListener { v, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> v.parent.requestDisallowInterceptTouchEvent(true)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    v.parent.requestDisallowInterceptTouchEvent(false)
+            }
+            false
         }
-        val box = FrameLayout(this)
-        val pad = Ui.dp(this, 20)
-        box.setPadding(pad, Ui.dp(this, 8), pad, 0)
-        box.addView(edit)
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Advanced intent")
-            .setMessage(
-                "Optional. One per line:\n" +
-                    "action=...\ndata=...\ncategory=...\n" +
-                    "extra:key=text\nextrabool:key=true\nextraint:key=5"
-            )
-            .setView(box)
-            .setPositiveButton("Save") { _, _ ->
-                Slots.setAdvanced(this, slot, edit.text.toString().trim())
-                refreshPanes()
-            }
-            .setNeutralButton("Clear") { _, _ ->
-                Slots.setAdvanced(this, slot, "")
-                refreshPanes()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun refreshPanes() {
-        adapterUp.notifyDataSetChanged()
-        adapterDown.notifyDataSetChanged()
     }
 
     private fun makeDot(): View {
         val size = Ui.dp(this, 6)
         val v = View(this)
         v.layoutParams = LinearLayout.LayoutParams(size, size).apply {
-            setMargins(Ui.dp(this@MainActivity, 4), Ui.dp(this@MainActivity, 4), Ui.dp(this@MainActivity, 4), 0)
+            setMargins(Ui.dp(this@MainActivity, 4), Ui.dp(this@MainActivity, 4), Ui.dp(this@MainActivity, 4), Ui.dp(this@MainActivity, 4))
         }
         v.background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL

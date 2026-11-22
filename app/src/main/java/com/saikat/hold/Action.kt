@@ -6,7 +6,6 @@ import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -22,7 +21,7 @@ enum class Action(
     val needsTarget: Boolean = false
 ) {
     NONE("none", "Do nothing", "The key works like normal.", R.drawable.ic_block),
-    ACTIVITY("activity", "Launch activity", "Open a specific screen of an app.", R.drawable.ic_open, true),
+    SHORTCUT("shortcut", "Launch app shortcut", "Run a shortcut an app offers, like Ramble.", R.drawable.ic_shortcut, true),
     APP("app", "Launch app", "Open an app of your choice.", R.drawable.ic_apps, true),
     FLASHLIGHT("flashlight", "Flashlight", "Toggle the torch on or off.", R.drawable.ic_flashlight),
     CAMERA("camera", "Camera", "Open the default camera app.", R.drawable.ic_camera),
@@ -57,34 +56,7 @@ object ActionRunner {
         }
     }
 
-    /**
-     * Builds the intent for Launch activity. [advanced] is optional text, one entry per line:
-     *   action=...        data=...        category=...
-     *   extra:key=text    extrabool:key=true    extraint:key=5
-     */
-    private fun activityIntent(target: String, advanced: String): Intent {
-        val parts = target.split("/", limit = 2)
-        val i = Intent().setClassName(parts[0], parts[1])
-        var data: Uri? = null
-        for (raw in advanced.lines()) {
-            val line = raw.trim()
-            if (line.isEmpty() || !line.contains('=')) continue
-            val k = line.substringBefore('=').trim()
-            val v = line.substringAfter('=').trim()
-            when {
-                k == "action" -> i.action = v
-                k == "data" -> data = Uri.parse(v)
-                k == "category" -> i.addCategory(v)
-                k.startsWith("extra:") -> i.putExtra(k.removePrefix("extra:"), v)
-                k.startsWith("extrabool:") -> i.putExtra(k.removePrefix("extrabool:"), v.toBoolean())
-                k.startsWith("extraint:") -> v.toIntOrNull()?.let { i.putExtra(k.removePrefix("extraint:"), it) }
-            }
-        }
-        if (data != null) i.data = data
-        return i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-
-    fun run(s: AccessibilityService, action: Action, target: String, advanced: String = "") {
+    fun run(s: AccessibilityService, action: Action, target: String) {
         try {
             when (action) {
                 Action.NONE -> Unit
@@ -125,7 +97,12 @@ object ActionRunner {
                         ?: throw IllegalStateException("No launcher")
                     s.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
-                Action.ACTIVITY -> s.startActivity(activityIntent(target, advanced))
+                Action.SHORTCUT -> {
+                    // target is the intent the app handed back when the shortcut was created
+                    val i = Intent.parseUri(target, Intent.URI_INTENT_SCHEME)
+                    i.selector = null
+                    s.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
             }
         } catch (e: Exception) {
             val why = e.message?.take(80) ?: e.javaClass.simpleName
@@ -140,11 +117,6 @@ object ActionRunner {
         return try {
             when (action) {
                 Action.APP -> pm.getApplicationInfo(target, 0).loadLabel(pm).toString()
-                Action.ACTIVITY -> {
-                    val parts = target.split("/", limit = 2)
-                    pm.getApplicationInfo(parts[0], 0).loadLabel(pm).toString() +
-                        " · " + parts[1].substringAfterLast('.')
-                }
                 else -> ""
             }
         } catch (e: Exception) {

@@ -7,6 +7,9 @@ object Slots {
     const val UP = "up"
     const val DOWN = "down"
 
+    /** Pseudo action id used to store the display name of the chosen app shortcut. */
+    const val SHORTCUT_NAME = "shortcut_name"
+
     private fun p(c: Context) = c.getSharedPreferences("hold", Context.MODE_PRIVATE)
 
     fun type(c: Context, slot: String): String =
@@ -24,15 +27,7 @@ object Slots {
         p(c).edit().putString("${slot}_${id}_target", target).apply()
     }
 
-    /** Optional extra intent details (action, data, extras) for Launch activity, one per line. */
-    fun advanced(c: Context, slot: String): String =
-        p(c).getString("${slot}_activity_adv", "") ?: ""
-
-    fun setAdvanced(c: Context, slot: String, v: String) {
-        p(c).edit().putString("${slot}_activity_adv", v).apply()
-    }
-
-    fun vibration(c: Context) =p(c).getBoolean("vibration", true)
+    fun vibration(c: Context) = p(c).getBoolean("vibration", true)
     fun setVibration(c: Context, v: Boolean) = p(c).edit().putBoolean("vibration", v).apply()
 
     fun screenOnOnly(c: Context) = p(c).getBoolean("screen_on_only", true)

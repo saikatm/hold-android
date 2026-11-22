@@ -2,13 +2,13 @@
 
 Hold a volume key, something happens. That's the whole app.
 
-**I wanted my volume buttons to do one extra thing when held down, like turning on the flashlight or opening a specific app. The apps that do this are packed with features I never use, so I made a tiny one that only does this.**
+I wanted my volume buttons to do one extra thing when held down, like turning on the flashlight or opening a specific app. The apps that do this are packed with features I never use, so I made a tiny one that only does this.
 
 ## What it does
 
 Each volume key (up and down) gets one action that runs when you hold it. A quick tap still changes the volume like normal.
 
-You pick the action by swiping, a bit like the iPhone Action Button settings. Whatever page you stop on is saved.
+You pick the action by swiping up and down, a bit like the iPhone Action Button settings. Volume Up and Volume Down sit side by side, and whatever page you stop on is saved.
 
 Actions you can choose from:
 
@@ -20,7 +20,7 @@ Actions you can choose from:
 - Screenshot
 - Lock screen
 - Launch an app
-- Launch a specific screen (activity) inside an app
+- Launch an app shortcut (the same shortcuts Button Mapper lists, like Todoist's Ramble)
 
 There are also a few small settings: hold time (300 to 800 ms), vibration when the hold registers, and an option to only work while the screen is on so it doesn't fire in your pocket.
 
@@ -39,7 +39,7 @@ Hold needs an accessibility service to see the volume keys. Android is strict ab
 adb shell pm grant com.saikat.hold android.permission.WRITE_SECURE_SETTINGS
 ```
 
-**If you sideload the APK some other way and Android greys out the accessibility switch, go to Settings, Apps, Hold, the three-dot menu, and tap Allow restricted settings.**
+If you sideload the APK some other way and Android greys out the accessibility switch, go to Settings, Apps, Hold, the three-dot menu, and tap Allow restricted settings.
 
 ## Building
 
@@ -53,7 +53,7 @@ Targets Android 16 (API 36), works back to Android 10 (API 29).
 
 - A key with an action assigned can't repeat while held, because Hold is waiting to see whether it's a tap or a hold. Short taps are passed along when you let go, so they can feel a touch slower. Keys set to "Do nothing" are never touched.
 - The power button can't be used. Normal apps aren't allowed to read it.
-- "Launch activity" only lists screens an app has made available to others, and some of them won't open without extra data.
+- "Launch app shortcut" saves the shortcut an app hands back when you pick it. If an app updates and changes how that shortcut works, pick it again.
 - Some phone makers (Xiaomi, Oppo, Vivo, Samsung and a few others) kill background apps aggressively. The setup screen links to the right places, but you may still need to lock Hold in your recents.
 - Hold doesn't read your screen, collect data or use the internet.
 

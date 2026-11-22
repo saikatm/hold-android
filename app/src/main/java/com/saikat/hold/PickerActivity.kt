@@ -13,13 +13,17 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 /**
- * Picks the target for a Launch app / Launch activity slot and saves it directly.
- * App mode: tap an app. Activity mode: tap an app to expand its exported activities, tap one.
+ * Picks the target for a slot.
+ *  - Launch app: tap an app, its package is saved.
+ *  - Launch app shortcut: lists every shortcut apps offer (the same list Button Mapper shows).
+ *    Tapping one asks that app to create the shortcut, and Hold saves the intent it returns.
  */
 class PickerActivity : AppCompatActivity() {
 
@@ -28,19 +32,43 @@ class PickerActivity : AppCompatActivity() {
         const val EXTRA_MODE = "mode"
     }
 
-    private class AppItem(val label: String, val pkg: String, val info: ResolveInfo)
-
-    /** One visible row: either an app, or one of an expanded app's activities. */
-    private class Row(val app: AppItem, val activity: String?, val activityLabel: String?)
+    private class Item(
+        val label: String,
+        val sub: String,
+        val pkg: String,
+        val cls: String?,
+        val info: ResolveInfo
+    )
 
     private lateinit var slot: String
     private lateinit var mode: Action
-    private var apps: List<AppItem> = emptyList()
-    private val expanded = mutableSetOf<String>()
-    private val activityCache = mutableMapOf<String, List<Pair<String, String>>>()
-    private var rows: List<Row> = emptyList()
+    private var items: List<Item> = emptyList()
+    private var shown: List<Item> = emptyList()
     private var query = ""
+    private var pendingLabel = ""
     private lateinit var adapter: RowAdapter
+
+    private val shortcutResult =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            val data = r.data
+            if (r.resultCode != RESULT_OK || data == null) return@registerForActivityResult
+
+            @Suppress("DEPRECATION")
+            val shortcut: Intent? = if (Build.VERSION.SDK_INT >= 33) {
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT, Intent::class.java)
+            } else {
+                data.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT)
+            }
+            if (shortcut == null) {
+                Toast.makeText(this, "That shortcut didn't return anything to run", Toast.LENGTH_LONG).show()
+                return@registerForActivityResult
+            }
+            val name = data.getStringExtra(Intent.EXTRA_SHORTCUT_NAME)?.takeIf { it.isNotBlank() }
+                ?: pendingLabel
+            Slots.setTarget(this, slot, Action.SHORTCUT.id, shortcut.toUri(Intent.URI_INTENT_SCHEME))
+            Slots.setTarget(this, slot, Slots.SHORTCUT_NAME, name)
+            finish()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,7 +79,7 @@ class PickerActivity : AppCompatActivity() {
         mode = Action.byId(intent.getStringExtra(EXTRA_MODE) ?: Action.APP.id)
 
         findViewById<TextView>(R.id.title).text =
-            if (mode == Action.ACTIVITY) "Choose activity" else "Choose app"
+            if (mode == Action.SHORTCUT) "Choose shortcut" else "Choose app"
         findViewById<View>(R.id.back).setOnClickListener { finish() }
 
         adapter = RowAdapter()
@@ -64,73 +92,68 @@ class PickerActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 query = s?.toString()?.trim() ?: ""
-                rebuild()
+                filter()
             }
         })
 
         Thread {
-            val loaded = loadApps()
+            val loaded = load()
             runOnUiThread {
-                apps = loaded
-                rebuild()
+                items = loaded
+                filter()
             }
         }.start()
     }
 
-    private fun loadApps(): List<AppItem> {
-        val pm = packageManager
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val found: List<ResolveInfo> = if (Build.VERSION.SDK_INT >= 33) {
-            pm.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
+    private fun query(intent: Intent): List<ResolveInfo> =
+        if (Build.VERSION.SDK_INT >= 33) {
+            packageManager.queryIntentActivities(intent, PackageManager.ResolveInfoFlags.of(0))
         } else {
             @Suppress("DEPRECATION")
-            pm.queryIntentActivities(intent, 0)
+            packageManager.queryIntentActivities(intent, 0)
         }
-        return found
-            .filter { it.activityInfo.packageName != packageName }
-            .distinctBy { it.activityInfo.packageName }
-            .map { AppItem(it.loadLabel(pm).toString(), it.activityInfo.packageName, it) }
-            .sortedBy { it.label.lowercase() }
+
+    private fun load(): List<Item> {
+        val pm = packageManager
+        return if (mode == Action.SHORTCUT) {
+            query(Intent(Intent.ACTION_CREATE_SHORTCUT))
+                .filter { it.activityInfo.packageName != packageName }
+                .map {
+                    val app = it.activityInfo.applicationInfo.loadLabel(pm).toString()
+                    Item(it.loadLabel(pm).toString(), app, it.activityInfo.packageName, it.activityInfo.name, it)
+                }
+                .sortedWith(compareBy({ it.sub.lowercase() }, { it.label.lowercase() }))
+        } else {
+            query(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER))
+                .filter { it.activityInfo.packageName != packageName }
+                .distinctBy { it.activityInfo.packageName }
+                .map { Item(it.loadLabel(pm).toString(), it.activityInfo.packageName, it.activityInfo.packageName, null, it) }
+                .sortedBy { it.label.lowercase() }
+        }
     }
 
-    @Suppress("DEPRECATION")
-    private fun activitiesOf(pkg: String): List<Pair<String, String>> =
-        activityCache.getOrPut(pkg) {
-            try {
-                val pm = packageManager
-                val info = if (Build.VERSION.SDK_INT >= 33) {
-                    pm.getPackageInfo(
-                        pkg, PackageManager.PackageInfoFlags.of(PackageManager.GET_ACTIVITIES.toLong())
-                    )
-                } else {
-                    pm.getPackageInfo(pkg, PackageManager.GET_ACTIVITIES)
-                }
-                info.activities.orEmpty()
-                    .filter { it.exported && it.enabled && it.permission == null }
-                    .map { it.name to it.loadLabel(pm).toString() }
-                    .sortedBy { it.first }
-            } catch (e: Exception) {
-                emptyList()
-            }
-        }
-
-    private fun rebuild() {
+    private fun filter() {
         val q = query.lowercase()
-        val out = ArrayList<Row>()
-        for (app in apps) {
-            if (q.isNotEmpty() && !app.label.lowercase().contains(q) && !app.pkg.lowercase().contains(q)) continue
-            out.add(Row(app, null, null))
-            if (mode == Action.ACTIVITY && expanded.contains(app.pkg)) {
-                for ((cls, label) in activitiesOf(app.pkg)) out.add(Row(app, cls, label))
-            }
+        shown = if (q.isEmpty()) items else items.filter {
+            it.label.lowercase().contains(q) || it.sub.lowercase().contains(q)
         }
-        rows = out
         adapter.notifyDataSetChanged()
     }
 
-    private fun save(target: String) {
-        Slots.setTarget(this, slot, mode.id, target)
-        finish()
+    private fun pick(item: Item) {
+        if (mode == Action.SHORTCUT) {
+            pendingLabel = item.label
+            try {
+                shortcutResult.launch(
+                    Intent(Intent.ACTION_CREATE_SHORTCUT).setClassName(item.pkg, item.cls!!)
+                )
+            } catch (e: Exception) {
+                Toast.makeText(this, "Can't open that shortcut", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Slots.setTarget(this, slot, mode.id, item.pkg)
+            finish()
+        }
     }
 
     private inner class RowAdapter : RecyclerView.Adapter<RowAdapter.VH>() {
@@ -143,34 +166,14 @@ class PickerActivity : AppCompatActivity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
             VH(LayoutInflater.from(parent.context).inflate(R.layout.item_app, parent, false))
 
-        override fun getItemCount() = rows.size
+        override fun getItemCount() = shown.size
 
         override fun onBindViewHolder(h: VH, position: Int) {
-            val r = rows[position]
-            val pad = h.itemView
-            if (r.activity == null) {
-                h.icon.visibility = View.VISIBLE
-                h.icon.setImageDrawable(r.app.info.loadIcon(packageManager))
-                h.name.text = r.app.label
-                h.sub.text = if (mode == Action.ACTIVITY) {
-                    if (expanded.contains(r.app.pkg)) "Tap to collapse" else "Tap to show activities"
-                } else r.app.pkg
-                pad.setPaddingRelative(Ui.dp(this@PickerActivity, 24), pad.paddingTop, pad.paddingEnd, pad.paddingBottom)
-                pad.setOnClickListener {
-                    if (mode == Action.ACTIVITY) {
-                        if (!expanded.add(r.app.pkg)) expanded.remove(r.app.pkg)
-                        rebuild()
-                    } else {
-                        save(r.app.pkg)
-                    }
-                }
-            } else {
-                h.icon.visibility = View.GONE
-                h.name.text = r.activityLabel
-                h.sub.text = r.activity
-                pad.setPaddingRelative(Ui.dp(this@PickerActivity, 80), pad.paddingTop, pad.paddingEnd, pad.paddingBottom)
-                pad.setOnClickListener { save("${r.app.pkg}/${r.activity}") }
-            }
+            val item = shown[position]
+            h.icon.setImageDrawable(item.info.loadIcon(packageManager))
+            h.name.text = item.label
+            h.sub.text = item.sub
+            h.itemView.setOnClickListener { pick(item) }
         }
     }
 }
