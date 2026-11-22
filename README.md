@@ -2,6 +2,8 @@
 
 Hold a volume key, something happens. That's the whole app.
 
+<img width="758" height="1688" alt="Screenshot_20261122-221042" src="https://github.com/user-attachments/assets/4033eba8-88db-4f42-8e82-91b9e73385bf" />
+
 I wanted my volume buttons to do one extra thing when held down, like turning on the flashlight or opening a specific app. The apps that do this are packed with features I never use, so I made a tiny one that only does this.
 
 ## What it does
