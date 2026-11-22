@@ -5,4 +5,5 @@
     <color name="secondary">#9A9A9A</color>
     <color name="divider">#1F1F1F</color>
     <color name="outline">#D9D9D9</color>
+    <color name="warn">#FF9800</color>
 </resources>

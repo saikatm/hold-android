@@ -97,11 +97,13 @@ class MainActivity : AppCompatActivity() {
     private fun refreshStatus() {
         if (ServiceControl.isEnabled(this)) {
             headline.text = "Ready"
+            headline.setTextColor(getColor(R.color.white))
             sub.text = "Hold a volume key to run its action."
             btnOn.visibility = View.GONE
             btnOff.visibility = View.VISIBLE
         } else {
-            headline.text = "Setup"
+            headline.text = "Not ready"
+            headline.setTextColor(getColor(R.color.warn))
             sub.text = "Turn on the Hold service to start."
             btnOn.visibility = View.VISIBLE
             btnOff.visibility = View.GONE
@@ -137,7 +139,6 @@ class MainActivity : AppCompatActivity() {
                 showDot(dots, position)
                 if (position != current) {
                     current = position
-                    Slots.setType(this@MainActivity, slot, Action.entries[position].id)
                     pager.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 }
             }

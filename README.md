@@ -8,7 +8,7 @@ I wanted my volume buttons to do one extra thing when held down, like turning on
 
 Each volume key (up and down) gets one action that runs when you hold it. A quick tap still changes the volume like normal.
 
-You pick the action by swiping up and down, a bit like the iPhone Action Button settings. Volume Up and Volume Down sit side by side, and whatever page you stop on is saved.
+You pick the action by swiping up and down, a bit like the iPhone Action Button settings. Volume Up and Volume Down sit side by side. Scrolling only previews a page, so tap its big icon to confirm and save it. The saved one is marked Active.
 
 Actions you can choose from:
 
@@ -31,7 +31,7 @@ The UI is plain black with white text, so it looks right on an AMOLED screen.
 Hold needs an accessibility service to see the volume keys. Android is strict about those, so the install is a little fussy.
 
 1. Build the APK (see below) or grab it from the Actions artifacts.
-2. Install it over ADB: `adb install Hold-1.0-debug.apk`
+2. Install it over ADB: `adb install Hold-1.5-debug.apk`
 3. Open Hold and follow the setup screen. It walks you through turning the service on and exempting the app from battery limits.
 4. Optional but handy: run this once so the Turn on / Turn off button works without digging through Settings.
 

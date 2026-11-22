@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -39,11 +40,11 @@ class SetupActivity : AppCompatActivity() {
         steps.removeAllViews()
         val pm = getSystemService(PowerManager::class.java)
 
-        add("Turn on the Hold service", ServiceControl.isEnabled(this), null) {
+        add(R.drawable.ic_accessibility, "Turn on the Hold service", null, ServiceControl.isEnabled(this)) {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
-        add("Battery: unrestricted", pm.isIgnoringBatteryOptimizations(packageName), null) {
+        add(R.drawable.ic_battery, "Battery: unrestricted", null, pm.isIgnoringBatteryOptimizations(packageName)) {
             try {
                 startActivity(
                     Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
@@ -55,16 +56,17 @@ class SetupActivity : AppCompatActivity() {
         }
 
         add(
-            "Pause app activity if unused: off", Slots.flag(this, "pause"),
-            "Opens App info. Turn off \"Pause app activity if unused\"."
+            R.drawable.ic_pause, "Pause app activity if unused: off",
+            "Opens App info. Turn that switch off.", Slots.flag(this, "pause")
         ) {
             Slots.setFlag(this, "pause")
             openAppInfo()
         }
 
         add(
-            "Allow restricted settings", Slots.flag(this, "restricted"),
-            "Only if you sideloaded the APK. In App info tap the three dots, then Allow restricted settings."
+            R.drawable.ic_lock_open, "Allow restricted settings",
+            "Only if you sideloaded the APK. In App info tap the three dots, then Allow restricted settings.",
+            Slots.flag(this, "restricted")
         ) {
             Slots.setFlag(this, "restricted")
             openAppInfo()
@@ -72,8 +74,9 @@ class SetupActivity : AppCompatActivity() {
 
         val cmd = "adb shell pm grant $packageName android.permission.WRITE_SECURE_SETTINGS"
         add(
-            "Grant secure settings (optional)", ServiceControl.canWrite(this),
-            "Lets the Turn on / Turn off button work without opening Settings. Tap to copy the ADB command:\n$cmd"
+            R.drawable.ic_terminal, "Grant secure settings (optional)",
+            "Tap to copy the ADB command. Lets Turn on / Turn off work without opening Settings.",
+            ServiceControl.canWrite(this)
         ) {
             val cb = getSystemService(ClipboardManager::class.java)
             cb.setPrimaryClip(ClipData.newPlainText("adb", cmd))
@@ -81,7 +84,10 @@ class SetupActivity : AppCompatActivity() {
         }
 
         oemIntent()?.let { oem ->
-            add("Allow autostart", Slots.flag(this, "autostart"), "Your phone brand may kill background apps.") {
+            add(
+                R.drawable.ic_rocket, "Allow autostart",
+                "Your phone brand may kill background apps.", Slots.flag(this, "autostart")
+            ) {
                 Slots.setFlag(this, "autostart")
                 try {
                     startActivity(oem)
@@ -92,40 +98,21 @@ class SetupActivity : AppCompatActivity() {
         }
     }
 
-    private fun add(title: String, done: Boolean, note: String?, onClick: () -> Unit) {
-        val styled = MaterialButton(
-            this,
-            null,
-            com.google.android.material.R.attr.materialButtonOutlinedStyle
-        )
-        styled.text = title
-        styled.isAllCaps = false
-        styled.setTextColor(0xFFFFFFFF.toInt())
-        styled.cornerRadius = Ui.dp(this, 8)
-        styled.setStrokeColorResource(R.color.outline)
-        styled.strokeWidth = Ui.dp(this, 1)
-        if (done) {
-            styled.setIconResource(R.drawable.ic_check)
-            styled.iconTint = android.content.res.ColorStateList.valueOf(0xFFFFFFFF.toInt())
-        }
-        styled.setOnClickListener { onClick() }
-        val lp = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(this, 56)
-        )
-        lp.topMargin = Ui.dp(this, 12)
-        steps.addView(styled, lp)
-
+    /** One tappable card: icon, title, optional note, and a chevron (todo) or check (done). */
+    private fun add(icon: Int, title: String, note: String?, done: Boolean, onClick: () -> Unit) {
+        val v = layoutInflater.inflate(R.layout.item_step, steps, false)
+        v.findViewById<ImageView>(R.id.stepIcon).setImageResource(icon)
+        v.findViewById<TextView>(R.id.stepTitle).text = title
         if (note != null) {
-            val tv = TextView(this)
-            tv.text = note
-            tv.setTextColor(resources.getColor(R.color.secondary, theme))
-            tv.textSize = 12f
-            val nlp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            nlp.topMargin = Ui.dp(this, 4)
-            steps.addView(tv, nlp)
+            val n = v.findViewById<TextView>(R.id.stepNote)
+            n.text = note
+            n.visibility = View.VISIBLE
         }
+        v.findViewById<ImageView>(R.id.stepStatus)
+            .setImageResource(if (done) R.drawable.ic_check_circle else R.drawable.ic_chevron)
+        v.alpha = if (done) 0.55f else 1f
+        v.setOnClickListener { onClick() }
+        steps.addView(v)
     }
 
     private fun openAppInfo() {

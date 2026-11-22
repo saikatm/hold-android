@@ -16,19 +16,18 @@ import android.widget.Toast
 enum class Action(
     val id: String,
     val title: String,
-    val desc: String,
     val icon: Int,
     val needsTarget: Boolean = false
 ) {
-    NONE("none", "Do nothing", "The key works like normal.", R.drawable.ic_block),
-    SHORTCUT("shortcut", "Launch app shortcut", "Run a shortcut an app offers, like Ramble.", R.drawable.ic_shortcut, true),
-    APP("app", "Launch app", "Open an app of your choice.", R.drawable.ic_apps, true),
-    FLASHLIGHT("flashlight", "Flashlight", "Toggle the torch on or off.", R.drawable.ic_flashlight),
-    CAMERA("camera", "Camera", "Open the default camera app.", R.drawable.ic_camera),
-    RINGER("ringer", "Ringer mode", "Switch between ring and vibrate.", R.drawable.ic_vibration),
-    MEDIA("media", "Play / pause", "Toggle media playback.", R.drawable.ic_play),
-    SCREENSHOT("screenshot", "Screenshot", "Take a screenshot.", R.drawable.ic_screenshot),
-    LOCK("lock", "Lock screen", "Turn the screen off and lock.", R.drawable.ic_lock);
+    NONE("none", "Do nothing", R.drawable.ic_block),
+    SHORTCUT("shortcut", "Launch app shortcut", R.drawable.ic_shortcut, true),
+    APP("app", "Launch app", R.drawable.ic_apps, true),
+    FLASHLIGHT("flashlight", "Flashlight", R.drawable.ic_flashlight),
+    CAMERA("camera", "Camera", R.drawable.ic_camera),
+    RINGER("ringer", "Ringer mode", R.drawable.ic_vibration),
+    MEDIA("media", "Play / pause", R.drawable.ic_play),
+    SCREENSHOT("screenshot", "Screenshot", R.drawable.ic_screenshot),
+    LOCK("lock", "Lock screen", R.drawable.ic_lock);
 
     companion object {
         fun byId(id: String): Action = entries.firstOrNull { it.id == id } ?: NONE
