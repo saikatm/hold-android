@@ -61,10 +61,10 @@ class ActionPagerAdapter(
                 else HapticFeedbackConstants.LONG_PRESS
             )
             // Flash a check so the save is obvious, then put the action icon back.
-            val pos = h.bindingAdapterPosition
+            val pos = h.adapterPosition
             h.icon.setImageResource(R.drawable.ic_check)
             h.icon.postDelayed({
-                if (h.bindingAdapterPosition == pos) h.icon.setImageResource(a.icon)
+                if (h.adapterPosition == pos) h.icon.setImageResource(a.icon)
             }, 700)
         }
 
