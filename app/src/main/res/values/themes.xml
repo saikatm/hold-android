@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.Hold" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#FFFFFF</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="colorPrimaryContainer">#1F1F1F</item>
+        <item name="colorOnPrimaryContainer">#FFFFFF</item>
+        <item name="colorSecondary">#FFFFFF</item>
+        <item name="colorOnSecondary">#000000</item>
+        <item name="colorSurface">#000000</item>
+        <item name="colorOnSurface">#FFFFFF</item>
+        <item name="colorSurfaceVariant">#1F1F1F</item>
+        <item name="colorOnSurfaceVariant">#B3B3B3</item>
+        <item name="colorOutline">#D9D9D9</item>
+        <item name="colorOutlineVariant">#1F1F1F</item>
+        <item name="android:colorBackground">#000000</item>
+        <item name="colorOnBackground">#FFFFFF</item>
+        <item name="android:windowBackground">@color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+    </style>
+
+    <style name="Label">
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:letterSpacing">0.2</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/secondary</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <style name="Widget.Hold.Button.Filled" parent="Widget.Material3.Button">
+        <item name="cornerRadius">8dp</item>
+    </style>
+
+    <style name="Widget.Hold.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="cornerRadius">8dp</item>
+        <item name="strokeColor">@color/outline</item>
+    </style>
+
+</resources>
