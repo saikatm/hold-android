@@ -11,8 +11,8 @@ android {
         applicationId = "com.saikat.hold"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.5"
     }
 
     buildTypes {
@@ -32,7 +32,7 @@ kotlin {
 }
 
 base {
-    archivesName.set("Hold-1.0")
+    archivesName.set("Hold-1.5")
 }
 
 dependencies {
