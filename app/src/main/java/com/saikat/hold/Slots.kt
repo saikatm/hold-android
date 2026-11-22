@@ -24,7 +24,15 @@ object Slots {
         p(c).edit().putString("${slot}_${id}_target", target).apply()
     }
 
-    fun vibration(c: Context) = p(c).getBoolean("vibration", true)
+    /** Optional extra intent details (action, data, extras) for Launch activity, one per line. */
+    fun advanced(c: Context, slot: String): String =
+        p(c).getString("${slot}_activity_adv", "") ?: ""
+
+    fun setAdvanced(c: Context, slot: String, v: String) {
+        p(c).edit().putString("${slot}_activity_adv", v).apply()
+    }
+
+    fun vibration(c: Context) =p(c).getBoolean("vibration", true)
     fun setVibration(c: Context, v: Boolean) = p(c).edit().putBoolean("vibration", v).apply()
 
     fun screenOnOnly(c: Context) = p(c).getBoolean("screen_on_only", true)

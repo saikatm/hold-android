@@ -58,7 +58,8 @@ class KeyService : AccessibilityService() {
                     val r = Runnable {
                         fired = true
                         buzz()
-                        ActionRunner.run(this, action, target)
+                        val adv = if (action == Action.ACTIVITY) Slots.advanced(this, slot) else ""
+                        ActionRunner.run(this, action, target, adv)
                     }
                     pending = r
                     handler.postDelayed(r, Slots.holdMs(this).toLong())

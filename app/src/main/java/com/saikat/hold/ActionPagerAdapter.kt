@@ -11,7 +11,8 @@ import com.google.android.material.button.MaterialButton
 /** One swipeable page per [Action]. The page you land on is the saved action. */
 class ActionPagerAdapter(
     private val slot: String,
-    private val onChoose: (Action) -> Unit
+    private val onChoose: (Action) -> Unit,
+    private val onAdvanced: () -> Unit
 ) : RecyclerView.Adapter<ActionPagerAdapter.VH>() {
 
     class VH(v: View) : RecyclerView.ViewHolder(v) {
@@ -19,7 +20,9 @@ class ActionPagerAdapter(
         val title: TextView = v.findViewById(R.id.title)
         val desc: TextView = v.findViewById(R.id.desc)
         val target: TextView = v.findViewById(R.id.target)
+        val btnRow: View = v.findViewById(R.id.btnRow)
         val choose: MaterialButton = v.findViewById(R.id.choose)
+        val advanced: MaterialButton = v.findViewById(R.id.advanced)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -38,12 +41,21 @@ class ActionPagerAdapter(
             val t = Slots.target(c, slot, a.id)
             h.target.visibility = View.VISIBLE
             h.target.text = if (t.isEmpty()) "Nothing chosen yet" else ActionRunner.describe(c, a, t)
-            h.choose.visibility = View.VISIBLE
+            h.btnRow.visibility = View.VISIBLE
             h.choose.text = if (t.isEmpty()) "Choose" else "Change"
             h.choose.setOnClickListener { onChoose(a) }
+
+            if (a == Action.ACTIVITY) {
+                h.advanced.visibility = View.VISIBLE
+                h.advanced.text =
+                    if (Slots.advanced(c, slot).isBlank()) "Advanced" else "Advanced •"
+                h.advanced.setOnClickListener { onAdvanced() }
+            } else {
+                h.advanced.visibility = View.GONE
+            }
         } else {
             h.target.visibility = View.GONE
-            h.choose.visibility = View.GONE
+            h.btnRow.visibility = View.GONE
         }
     }
 }

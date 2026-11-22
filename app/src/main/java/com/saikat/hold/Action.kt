@@ -6,6 +6,7 @@ import android.content.Intent
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -21,14 +22,14 @@ enum class Action(
     val needsTarget: Boolean = false
 ) {
     NONE("none", "Do nothing", "The key works like normal.", R.drawable.ic_block),
+    ACTIVITY("activity", "Launch activity", "Open a specific screen of an app.", R.drawable.ic_open, true),
+    APP("app", "Launch app", "Open an app of your choice.", R.drawable.ic_apps, true),
     FLASHLIGHT("flashlight", "Flashlight", "Toggle the torch on or off.", R.drawable.ic_flashlight),
     CAMERA("camera", "Camera", "Open the default camera app.", R.drawable.ic_camera),
-    RINGER("ringer", "Ringer mode", "Switch between ring and vibrate.", R.drawable.ic_bell),
+    RINGER("ringer", "Ringer mode", "Switch between ring and vibrate.", R.drawable.ic_vibration),
     MEDIA("media", "Play / pause", "Toggle media playback.", R.drawable.ic_play),
     SCREENSHOT("screenshot", "Screenshot", "Take a screenshot.", R.drawable.ic_screenshot),
-    LOCK("lock", "Lock screen", "Turn the screen off and lock.", R.drawable.ic_lock),
-    APP("app", "Launch app", "Open an app of your choice.", R.drawable.ic_apps, true),
-    ACTIVITY("activity", "Launch activity", "Open a specific screen of an app.", R.drawable.ic_open, true);
+    LOCK("lock", "Lock screen", "Turn the screen off and lock.", R.drawable.ic_lock);
 
     companion object {
         fun byId(id: String): Action = entries.firstOrNull { it.id == id } ?: NONE
@@ -56,7 +57,34 @@ object ActionRunner {
         }
     }
 
-    fun run(s: AccessibilityService, action: Action, target: String) {
+    /**
+     * Builds the intent for Launch activity. [advanced] is optional text, one entry per line:
+     *   action=...        data=...        category=...
+     *   extra:key=text    extrabool:key=true    extraint:key=5
+     */
+    private fun activityIntent(target: String, advanced: String): Intent {
+        val parts = target.split("/", limit = 2)
+        val i = Intent().setClassName(parts[0], parts[1])
+        var data: Uri? = null
+        for (raw in advanced.lines()) {
+            val line = raw.trim()
+            if (line.isEmpty() || !line.contains('=')) continue
+            val k = line.substringBefore('=').trim()
+            val v = line.substringAfter('=').trim()
+            when {
+                k == "action" -> i.action = v
+                k == "data" -> data = Uri.parse(v)
+                k == "category" -> i.addCategory(v)
+                k.startsWith("extra:") -> i.putExtra(k.removePrefix("extra:"), v)
+                k.startsWith("extrabool:") -> i.putExtra(k.removePrefix("extrabool:"), v.toBoolean())
+                k.startsWith("extraint:") -> v.toIntOrNull()?.let { i.putExtra(k.removePrefix("extraint:"), it) }
+            }
+        }
+        if (data != null) i.data = data
+        return i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    fun run(s: AccessibilityService, action: Action, target: String, advanced: String = "") {
         try {
             when (action) {
                 Action.NONE -> Unit
@@ -97,16 +125,11 @@ object ActionRunner {
                         ?: throw IllegalStateException("No launcher")
                     s.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
-                Action.ACTIVITY -> {
-                    val parts = target.split("/", limit = 2)
-                    s.startActivity(
-                        Intent().setClassName(parts[0], parts[1])
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                }
+                Action.ACTIVITY -> s.startActivity(activityIntent(target, advanced))
             }
         } catch (e: Exception) {
-            Toast.makeText(s, "Can't launch: ${action.title}", Toast.LENGTH_SHORT).show()
+            val why = e.message?.take(80) ?: e.javaClass.simpleName
+            Toast.makeText(s, "Can't launch ${action.title}: $why", Toast.LENGTH_LONG).show()
         }
     }
 
